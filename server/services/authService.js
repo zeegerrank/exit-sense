@@ -1,4 +1,5 @@
 const dbConfig = require("../db/pool"); // Import the database configuration
+const bcrypt = require("bcrypt");
 
 exports.registerUserService = async (username, password, email) => {
   // Hash the password

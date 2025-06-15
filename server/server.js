@@ -1,12 +1,17 @@
 // index.js
 const express = require("express");
 const app = express();
+
 const PORT = process.env.PORT || 3000;
 // Database connection
 const dbConfig = require("./db/pool");
 
+// Import middleware
+const cookieParser = require("cookie-parser");
+
 // Middleware
 app.use(express.json());
+app.use(cookieParser());
 
 // Routes
 
