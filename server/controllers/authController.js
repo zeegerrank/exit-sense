@@ -46,17 +46,17 @@ const loginUser = async (req, res) => {
     const user = userResult.rows[0];
 
     // Create a JWT token
-    const AccessToken = signAccessToken(user);
-    const RefreshToken = signRefreshToken(user);
+    const accessToken = signAccessToken(user);
+    const refreshToken = signRefreshToken(user);
 
     return res
-      .cookie("accessToken", AccessToken, {
+      .cookie("accessToken", accessToken, {
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",
         sameSite: "None",
         maxAge: 3600 * 1000,
       })
-      .cookie("refreshToken", RefreshToken, {
+      .cookie("refreshToken", refreshToken, {
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",
         sameSite: "None",
