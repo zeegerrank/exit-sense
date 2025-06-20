@@ -5,6 +5,7 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- User Roles
 DO $$
+BEGIN
 	CREATE TYPE user_role AS ENUM ('staff','manager','admin');
 EXCEPTION
 	WHEN duplicate_object THEN NULL;
@@ -21,6 +22,7 @@ END $$;
 
 -- Customer Mood
 DO $$
+BEGIN
 	CREATE TYPE customer_mood AS ENUM ('good','neutral','bad');
 EXCEPTION
 	WHEN duplicate_object THEN NULL;
@@ -28,6 +30,7 @@ END $$;
 
 -- Customer Age Range
 DO $$
+BEGIN
 	CREATE TYPE customer_age_range AS ENUM ('child','teen','adult','senior');
 EXCEPTION
 	WHEN duplicate_object THEN NULL;
@@ -45,9 +48,9 @@ END $$;
 -- 3. Create Tables
 
 -- User Table
-CREATE TABLE users(
+CREATE TABLE IF NOT EXISTS  users(
 	id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-	username TEXT UNIQUE NOT NULL,
+	username TEXT UNIQUE NOT NULL ,
 	password TEXT NOT NULL,
 	email TEXT UNIQUE NOT NULL,
 	role user_role NOT NULL DEFAULT 'staff',
@@ -57,10 +60,10 @@ CREATE TABLE users(
 
 
 -- Session Table
-CREATE TABLE sessions(
+CREATE TABLE IF NOT EXISTS sessions(
 	id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
 	user_id UUID NOT NULL,
-	refresh_token TEXT NOT NULL,
+	refresh_token TEXT UNIQUE NOT NULL ,
 	created_at TIMESTAMP NOT NULL,
 	expired_at TIMESTAMP NOT NULL,
 	revoked BOOLEAN NOT NULL
@@ -71,9 +74,12 @@ CREATE TABLE sessions(
 		ON DELETE CASCADE
 );
 
+CREATE INDEX index_sessions_token_revoked_expiration
+ON sessions(refresh_token, revoked, expired_at);
+
 
 -- Log Table
-CREATE TABLE exit_log(
+CREATE TABLE IF NOT EXISTS  exit_log(
 	id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
 	title TEXT NOT NULL,
 	content TEXT NOT NULL,
@@ -103,12 +109,12 @@ CREATE TABLE exit_log(
 
 
 -- Customer Table
-CREATE TABLE customer(
+CREATE TABLE IF NOT EXISTS  customer(
 	id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
 	age_range customer_age_range,
 	mood customer_mood NOT NULL DEFAULT 'neutral',
 	vision_condition customer_vision_condition,
-	interests TEXT[] DEFAULT {},
+	interests TEXT[] DEFAULT ARRAY[]::TEXT[],
 	intent_style_only BOOLEAN,
 	created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
