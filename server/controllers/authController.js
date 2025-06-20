@@ -11,6 +11,13 @@ const {
   validateLoginInput,
 } = require("../validators/authValidator");
 const { registerUserService } = require("../services/authService");
+const {
+  createSession,
+  getSessionByToken,
+  rotateSessionToken,
+  revokeSession,
+} = require("../utils/sessionHelper");
+const { throwWith } = require("../utils/throwWith");
 
 const registerUser = async (req, res) => {
   // Deconstructing the request body to get username, password, and email
@@ -49,6 +56,23 @@ const loginUser = async (req, res) => {
     const accessToken = signAccessToken(user);
     const refreshToken = signRefreshToken(user);
 
+    // Deconstruct user object for session creation
+    const { id: userId } = user;
+    // Create new session into database
+    const newSession = await createSession(userId, refreshToken);
+
+    // Log the session creation process
+    if (process.env.NODE_ENV !== "production") {
+      const { user_id, created_at, expired_at, revoked } = newSession;
+      console.log(
+        "New session is created: ",
+        user_id,
+        created_at,
+        expired_at,
+        revoked
+      );
+    }
+
     return res
       .cookie("accessToken", accessToken, {
         httpOnly: true,
@@ -85,7 +109,22 @@ const refreshAccessToken = async (req, res) => {
     // 2. Verify and decode refresh token
     // 3. Check if user still exists / refresh token is still valid
     // 4. Sign and return new access token
-    const { accessToken, refreshToken } = await validateRefreshToken(token);
+    const { accessToken, refreshToken: newRefreshToken } =
+      await validateRefreshToken(token);
+
+    // Validate refresh token with sessions table
+    const validSession = await getSessionByToken(newRefreshToken);
+    // Deconstruct object for token rotation process
+    const { refresh_token: oldRefreshToken } = validSession;
+    // Rotate refresh token
+    const rotationResult = await rotateSessionToken(
+      oldRefreshToken,
+      newRefreshToken
+    );
+    // Log rotation result in development env only
+    if (process.env.NODE_ENV !== "production") {
+      console.log(rotationResult);
+    }
 
     // 5. Return accessToken
     return res
@@ -111,6 +150,18 @@ const refreshAccessToken = async (req, res) => {
 
 const logoutUser = async (req, res) => {
   try {
+    // Revoke session using refresh token
+    const { refreshToken } = req.cookies;
+    // Check if refresh token provided
+    if (!refreshToken) {
+      throwWith(400, "No refresh token provided");
+    }
+    const revokeResult = await revokeSession(refreshToken);
+    // Log revoke result in development env only
+    if (process.env.NODE_ENV !== "production") {
+      console.log(revokeResult);
+    }
+
     //1. Clear access and refresh token cookies
     res.clearCookie("accessToken", {
       httpOnly: true,

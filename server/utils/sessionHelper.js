@@ -14,7 +14,7 @@ exports.createSession = async (userId, refreshToken) => {
 // After refresh
 exports.getSessionByToken = async (token) => {
   const foundSession = await dbConfig.query(
-    `SELECT * FROM sessions 
+    `SELECT id, user_id, refresh_token, created_at, expired_at, revoked FROM sessions 
     WHERE refresh_token = $1 AND revoked = false AND expired_at > NOW()`,
     [token]
   );
@@ -28,15 +28,15 @@ exports.getSessionByToken = async (token) => {
 };
 
 // After refresh token found
-exports.rotateSessionToken = async (oldToken, newToken) => {
+exports.rotateSessionToken = async (oldRefreshToken, newRefreshToken) => {
   const updatedResult = await dbConfig.query(
     ` UPDATE sessions
         SET refresh_token = $1, created_at = NOW(), expired_at = NOW() + interval '7 days', revoked = false
         WHERE refresh_token = $2 AND revoked = false`,
-    [newToken, oldToken]
+    [newRefreshToken, oldRefreshToken]
   );
 
-  if (!foundSession || foundSession.rowCount === 0) {
+  if (!updatedResult || updatedResult.rowCount === 0) {
     throw new Error(`Session not found or already revoked`);
   }
 
